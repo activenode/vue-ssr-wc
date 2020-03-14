@@ -1,5 +1,6 @@
 import { getHtmlFromCMS } from "./cmsMock";
 import { convertRawHtmlToVueTemplate, ssrVueTemplate } from "./ssrService";
+import { GenericElement } from "./customElementsDef";
 
 const Vue = require("vue/dist/vue");
 
@@ -95,82 +96,48 @@ Vue.component("slider-container", {
   }
 });
 
-getHtmlFromCMS()
-  .then(convertRawHtmlToVueTemplate)
-  .then(vueTemplate => {
-    return ssrVueTemplate(Vue, vueTemplate);
-  })
-  .then(htmlResult => {
-    console.log({ htmlResult });
-    const hydrateButton = document.getElementById("hydrateButton");
-    const addViaCsrButton = document.getElementById("addViaCSR");
-    const csrComponentsWrapper = document.getElementById("csrComponents");
+setTimeout(() => {
+  // I do not like timeouts but there is a weird issue in codesandbox so yeah :)
+  getHtmlFromCMS()
+    .then(convertRawHtmlToVueTemplate)
+    .then(vueTemplate => {
+      return ssrVueTemplate(Vue, vueTemplate);
+    })
+    .then(htmlResult => {
+      const appWrapper = document.getElementById("app");
+      const ssrButton = document.getElementById("doSSRButton");
+      const hydrateButton = document.getElementById("hydrateButton");
+      const addViaCsrButton = document.getElementById("addViaCSR");
+      const csrComponentsWrapper = document.getElementById("csrComponents");
 
-    document.querySelector("button.ssr").addEventListener("click", function(e) {
-      e.preventDefault();
-      this.disabled = true;
-      document.getElementById("app").innerHTML = htmlResult;
-      document.getElementById("ssrDone").removeAttribute("hidden");
-      hydrateButton.removeAttribute("hidden");
-    });
+      ssrButton.addEventListener("click", function(e) {
+        e.preventDefault();
+        this.disabled = true;
+        appWrapper.innerHTML = htmlResult;
+        document.getElementById("ssrDone").removeAttribute("hidden");
+        hydrateButton.removeAttribute("hidden");
+      });
 
-    hydrateButton.addEventListener("click", () => {
-      defineCustomElementsForHydration();
-      document.getElementById("hydrationDone").removeAttribute("hidden");
-      hydrateButton.disabled = true;
-      addViaCsrButton.removeAttribute("hidden");
-    });
+      hydrateButton.addEventListener("click", function(e) {
+        e.preventDefault();
+        defineCustomElementsForHydration();
+        document.getElementById("hydrationDone").removeAttribute("hidden");
+        hydrateButton.disabled = true;
+        addViaCsrButton.removeAttribute("hidden");
+      });
 
-    addViaCsrButton.addEventListener("click", () => {
-      const newCustomElement = document.createElement("wc-slider-elem");
-      csrComponentsWrapper.appendChild(newCustomElement);
+      addViaCsrButton.addEventListener("click", function(e) {
+        e.preventDefault();
+        const newCustomElement = document.createElement("wc-slider-elem");
+        csrComponentsWrapper.appendChild(newCustomElement);
+      });
     });
-  });
+}, 250);
 
 function defineCustomElementsForHydration() {
-  class BasicWC extends HTMLElement {
-    connectedCallback() {
-      if (this.connected) {
-        return;
-      }
-
-      this.connected = true;
-
-      const cssClassOfWrapper = `.${this.containerName}`;
-
-      if (!this.isServerRendered) {
-        const newWrapper = document.createElement("div");
-        newWrapper.classList.add(this.containerName);
-        this.prepend(newWrapper);
-      }
-      const wrapper = this.querySelector(cssClassOfWrapper);
-
-      const unslottedElems = this.querySelectorAll(
-        `${cssClassOfWrapper} > [unslotted="true"]`
-      );
-
-      this.attachShadow({ mode: "open" }).appendChild(wrapper);
-
-      unslottedElems.forEach(elem => {
-        elem.removeAttribute("unslotted");
-        this.appendChild(elem);
-      });
-    }
-
-    get renderTarget() {
-      return this.shadowRoot.querySelector(`.${this.containerName}`);
-    }
-
-    get isServerRendered() {
-      const cssClassOfWrapper = `.${this.containerName}`;
-      const wrapper = this.querySelector(cssClassOfWrapper);
-      return !!this.dataset.serverRendered && wrapper;
-    }
-  }
-
   customElements.define(
     "wc-slider-elem",
-    class extends BasicWC {
+    class extends GenericElement {
       constructor() {
         super();
         this.containerName = "slider-elem";
@@ -180,9 +147,6 @@ function defineCustomElementsForHydration() {
         super.connectedCallback();
 
         const isServerRendered = !!this.dataset.serverRendered;
-
-        //var ComponentClass = Vue.extend(SliderElem);
-        //var instance = new ComponentClass();
 
         const app = new Vue({
           template: "<anonymous-slider-elem></anonymous-slider-elem>"
