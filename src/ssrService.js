@@ -69,5 +69,7 @@ export function ssrVueTemplate(Vue, htmlVueTemplate) {
   const html = new Vue({ template: htmlVueTemplate });
   const renderer = vueRenderer.createRenderer();
 
-  return renderer.renderToString(html);
+  return renderer.renderToString(html, {
+    optimizeSSR: false
+  });
 }

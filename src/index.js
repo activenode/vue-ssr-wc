@@ -156,6 +156,10 @@ function defineCustomElementsForHydration() {
           // ok we need to hydrate this
           //app.$mount(, true);
           app.$mount(this.renderTarget, true);
+
+          setTimeout(() => {
+            console.log(this.renderTarget.outerHTML);
+          }, 300);
           //console.log("here", this);
         } else {
           console.log("todo CSR");
