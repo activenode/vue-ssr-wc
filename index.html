@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Parcel Sandbox</title>
+    <meta charset="UTF-8" />
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.3.0/milligram.css"
+    />
+    <style>
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+
+      [disabled] {
+        pointer-events: none !important;
+      }
+
+      .boxy {
+        padding: 2ex;
+        background: greenyellow;
+        border: 1px solid black;
+        margin-top: 2ex;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div>
+      <button class="ssr">Do the SSR</button>
+      <button id="hydrateButton" hidden>
+        Define customElements (auto-hydration)
+      </button>
+      <button id="addViaCSR" hidden>
+        Add a CSR component (no SSR)
+      </button>
+    </div>
+    <div
+      style="margin-top: 40px; padding: 50px; background:#efefef; border: 2px solid grey"
+    >
+      <div id="app"></div>
+
+      <div id="csrComponents"></div>
+    </div>
+
+    <div class="boxy" id="ssrDone" hidden>
+      SSR Done: Now you will see the unhydrated html. If you click it nothing
+      happens. No JS executed.
+    </div>
+
+    <div class="boxy" id="hydrationDone" hidden>
+      The customElements were now defined and should've initialized the
+      framework inside of it. Then the customElements detected the inside HTML,
+      moved it to the appropriate ShadowDOM and hydrated it. Try clicking it.
+    </div>
+
+    <script src="src/index.js"></script>
+  </body>
+</html>
