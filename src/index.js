@@ -1,7 +1,7 @@
-const Vue = require("vue/dist/vue");
-const renderer = require("vue-server-renderer").createRenderer();
+import { getHtmlFromCMS } from "./cmsMock";
+import { convertRawHtmlToVueTemplate, ssrVueTemplate } from "./ssrService";
 
-const DOMParserInstance = new DOMParser();
+const Vue = require("vue/dist/vue");
 
 Vue.component("SlotFactory", {
   render: createElement => {
@@ -95,116 +95,37 @@ Vue.component("slider-container", {
   }
 });
 
-const wcToVueMap = {
-  "wc-slider": "slider-container",
-  "wc-slider-elem": "slider-elem"
-};
+getHtmlFromCMS()
+  .then(convertRawHtmlToVueTemplate)
+  .then(vueTemplate => {
+    return ssrVueTemplate(Vue, vueTemplate);
+  })
+  .then(htmlResult => {
+    console.log({ htmlResult });
+    const hydrateButton = document.getElementById("hydrateButton");
+    const addViaCsrButton = document.getElementById("addViaCSR");
+    const csrComponentsWrapper = document.getElementById("csrComponents");
 
-const wcKeys = Object.keys(wcToVueMap);
-
-const wcToVueProcessor = (node, parent) => {
-  const nodeName = node.nodeName.toLowerCase();
-  if (!parent) {
-    parent = document.createElement("ghost");
-  }
-
-  let newElem;
-
-  if (nodeName === "#text") {
-    // its a text node, copy
-    newElem = node.cloneNode();
-  } else if (wcKeys.includes(nodeName)) {
-    // okay we need to rename this one
-    const newTagName = wcToVueMap[nodeName];
-    newElem = document.createElement(newTagName);
-  } else {
-    newElem = document.createElement(nodeName);
-    // process all children
-  }
-
-  if (nodeName !== "#text") {
-    [...node.attributes].forEach(attr => {
-      newElem.setAttribute(attr.name, attr.value);
+    document.querySelector("button.ssr").addEventListener("click", function(e) {
+      e.preventDefault();
+      this.disabled = true;
+      document.getElementById("app").innerHTML = htmlResult;
+      document.getElementById("ssrDone").removeAttribute("hidden");
+      hydrateButton.removeAttribute("hidden");
     });
 
-    [...node.childNodes].forEach(childNode => {
-      wcToVueProcessor(childNode, newElem);
+    hydrateButton.addEventListener("click", () => {
+      defineCustomElementsForHydration();
+      document.getElementById("hydrationDone").removeAttribute("hidden");
+      hydrateButton.disabled = true;
+      addViaCsrButton.removeAttribute("hidden");
     });
-  }
 
-  parent.appendChild(newElem);
-
-  return parent.innerHTML;
-
-  // This was the old implementation that is not stable:
-  /*return Object.keys(wcToVueMap).reduce((str, currentWcKey) => {
-    return str
-      .replace(
-        new RegExp(`<${currentWcKey}>`, "g"),
-        `<${wcToVueMap[currentWcKey]}>`
-      )
-      .replace(
-        new RegExp(`</${currentWcKey}>`, "g"),
-        `</${wcToVueMap[currentWcKey]}>`
-      );
-  }, html);*/
-};
-
-const inputHtmlFromPotentialCMS = `
-<wc-slider>
-  <wc-slider-elem>
-    <div unslotted="true" style="min-height: 60px; background: yellow">
-      sheep (click me)
-    </div>
-  </wc-slider-elem>
-
-  <wc-slider-elem>
-    <div unslotted="true" style="min-height: 60px; background: pink">
-      elephant (click me)
-    </div>
-  </wc-slider-elem>
-</wc-slider>
-`;
-
-const parsedHtmlAsXML = DOMParserInstance.parseFromString(
-  inputHtmlFromPotentialCMS,
-  "application/xml"
-);
-
-const postProcessedHtmlForServerRendering = wcToVueProcessor(
-  parsedHtmlAsXML.documentElement
-);
-
-const html = new Vue({ template: postProcessedHtmlForServerRendering });
-
-const sliderHtmlPromise = renderer.renderToString(html);
-
-sliderHtmlPromise.then(htmlResult => {
-  console.log({ htmlResult });
-  const hydrateButton = document.getElementById("hydrateButton");
-  const addViaCsrButton = document.getElementById("addViaCSR");
-  const csrComponentsWrapper = document.getElementById("csrComponents");
-
-  document.querySelector("button.ssr").addEventListener("click", function(e) {
-    e.preventDefault();
-    this.disabled = true;
-    document.getElementById("app").innerHTML = htmlResult;
-    document.getElementById("ssrDone").removeAttribute("hidden");
-    hydrateButton.removeAttribute("hidden");
+    addViaCsrButton.addEventListener("click", () => {
+      const newCustomElement = document.createElement("wc-slider-elem");
+      csrComponentsWrapper.appendChild(newCustomElement);
+    });
   });
-
-  hydrateButton.addEventListener("click", () => {
-    defineCustomElementsForHydration();
-    document.getElementById("hydrationDone").removeAttribute("hidden");
-    hydrateButton.disabled = true;
-    addViaCsrButton.removeAttribute("hidden");
-  });
-
-  addViaCsrButton.addEventListener("click", () => {
-    const newCustomElement = document.createElement("wc-slider-elem");
-    csrComponentsWrapper.appendChild(newCustomElement);
-  });
-});
 
 function defineCustomElementsForHydration() {
   class BasicWC extends HTMLElement {
